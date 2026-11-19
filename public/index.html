@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VALORANT // STORE PROTOCOL 2.2</title>
+  <meta name="description" content="Xem cửa hàng Valorant mỗi ngày, xem video in-game từng skin và biến thể, tra cứu tierlist Reddit & Pro player, kết nối Bot Discord.">
+  <meta name="theme-color" content="#ff4655">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TACTICAL NAVIGATION BAR (PURE SHOP FOCUS - TOOLS MOVED INSIDE MENU)
+       ========================================================================== -->
+  <header class="navbar">
+    <!-- Left: Menu Button & Brand -->
+    <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+      <button class="btn btn-menu-toggle" id="menuToggleBtn" title="Mở Menu tính năng bên trái">
+        <span>☰ MENU</span>
+      </button>
+      <div class="brand" id="brandBtn">
+        <img src="/assets/icon.svg" class="brand-icon" alt="ValoShop Logo">
+        <div class="brand-title">VALORANT <span>//</span> STORE</div>
+        <div class="brand-badge">2.2</div>
+      </div>
+    </div>
+
+    <!-- Center: Wallet Balances (VP, RP, KC) -->
+    <div class="nav-center">
+      <div class="wallet-bar">
+        <div class="wallet-item" title="Valorant Points (VP)">
+          <img src="/assets/vp.svg" class="currency-icon" alt="VP">
+          <span id="walletVP">0</span>
+        </div>
+        <div class="currency-divider"></div>
+        <div class="wallet-item" title="Radianite Points (RP)">
+          <img src="/assets/rp.svg" class="currency-icon" alt="RP">
+          <span id="walletRP">0</span>
+        </div>
+        <div class="currency-divider"></div>
+        <div class="wallet-item" title="Kingdom Credits (KC)">
+          <img src="/assets/kc.svg" class="currency-icon" alt="KC">
+          <span id="walletKC">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Minimal User Status (Opens Menu on click) -->
+    <div class="nav-actions">
+      <div class="user-badge" id="userBadge" title="Bấm để mở Menu & Tài khoản">
+        <div class="user-avatar" id="navUserAvatar">?</div>
+        <span class="user-name" id="navUserName">Khách</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       TACTICAL SLIDE-OUT DRAWER (MENU BÊN TRÁI // CHỨA ĐĂNG NHẬP & CÔNG CỤ)
+       ========================================================================== -->
+  <div class="tactical-drawer-overlay" id="tacticalDrawerOverlay">
+    <aside class="tactical-drawer" id="tacticalDrawer">
+      <div class="drawer-header">
+        <div class="drawer-title">BẢNG ĐIỀU KHIỂN // PROTOCOL</div>
+        <button class="drawer-close" id="drawerCloseBtn">&times;</button>
+      </div>
+      <div class="drawer-body">
+
+        <!-- 1. Login & Multi-Account Card Inside Drawer -->
+        <div style="background: rgba(255, 70, 85, 0.08); border: 1px solid var(--valo-red); padding: 14px; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-family: var(--font-display); font-size: 14px; letter-spacing: 1px; color: var(--valo-red);">TÀI KHOẢN RIOT</span>
+            <span id="drawerAccountStatus" style="font-size: 10px; background: rgba(255,70,85,0.2); color: var(--valo-red); padding: 1px 6px; font-weight: 700;">CHƯA KẾT NỐI</span>
+          </div>
+
+          <button class="btn btn-primary" id="drawerLoginBtn" style="width: 100%; padding: 10px; font-size: 14px; box-shadow: 0 4px 14px var(--valo-red-glow);">
+            <span>+ ĐĂNG NHẬP RIOT CHÍNH QUY</span>
+          </button>
+
+          <!-- Multi-Account List Inside Drawer -->
+          <div id="drawerAccountList" style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- 2. Tier List Modal Trigger (NEW!) -->
+        <div class="drawer-menu-item" id="drawerTierListBtn" style="border-left: 3px solid var(--valo-gold);">
+          <span class="drawer-item-icon">🏆</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title" style="color: var(--valo-gold);">Tier List Skin (Đáng Mua / Skip)</span>
+            <span class="drawer-item-desc">Đánh giá Reddit & Pro Player skin nào đáng tiền</span>
+          </div>
+        </div>
+
+        <!-- 3. Bot Discord Center -->
+        <div class="drawer-menu-item" id="drawerDiscordBtn" style="border-left: 3px solid #5865F2;">
+          <span class="drawer-item-icon">🤖</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title" style="color: #5865F2;">Trung Tâm Bot Discord</span>
+            <span class="drawer-item-desc">Mời bot, lệnh /shop, /tierlist, auto ping server</span>
+          </div>
+        </div>
+
+        <!-- 4. Web Online Sharing -->
+        <div class="drawer-menu-item" id="drawerOnlineBtn" style="border-left: 3px solid var(--valo-cyan);">
+          <span class="drawer-item-icon">🌐</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title" style="color: var(--valo-cyan);">Tên Miền Online Cho Mọi Wi-Fi</span>
+            <span class="drawer-item-desc">Link công khai truy cập từ 4G hoặc bất kỳ Wi-Fi nào</span>
+          </div>
+        </div>
+
+        <!-- 5. Share Shop (Export PNG) -->
+        <div class="drawer-menu-item" id="drawerShareBtn">
+          <span class="drawer-item-icon">📸</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title">Xuất Ảnh Thẻ Shop (PNG 16:9)</span>
+            <span class="drawer-item-desc">Tải ảnh chất lượng cao gửi bạn bè / Discord</span>
+          </div>
+        </div>
+
+        <!-- 6. Wishlist -->
+        <div class="drawer-menu-item" id="drawerWishlistBtn">
+          <span class="drawer-item-icon">★</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title">Danh Sách Yêu Thích (Wishlist)</span>
+            <span class="drawer-item-desc">Nổi bật viền vàng khi skin mơ ước về shop</span>
+          </div>
+        </div>
+
+        <!-- 7. Demo Mode -->
+        <div class="drawer-menu-item" id="drawerDemoBtn">
+          <span class="drawer-item-icon">⚡</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title">Chế Độ Xem Thử (Demo Shop)</span>
+            <span class="drawer-item-desc">Trải nghiệm shop mẫu có đủ Kuronami, Reaver...</span>
+          </div>
+        </div>
+
+        <!-- 8. Region Select -->
+        <div style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle);">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase;">
+            Khu Vực Máy Chủ (Region):
+          </div>
+          <select class="region-select" id="drawerRegionSelect" style="width: 100%;">
+            <option value="ap" selected>AP (Việt Nam / Châu Á)</option>
+            <option value="na">NA (Bắc Mỹ)</option>
+            <option value="eu">EU (Châu Âu)</option>
+            <option value="kr">KR (Hàn Quốc)</option>
+          </select>
+        </div>
+
+        <!-- 9. Sound Toggle -->
+        <div class="drawer-menu-item" id="drawerSoundBtn">
+          <span class="drawer-item-icon" id="drawerSoundIcon">🔊</span>
+          <div class="drawer-item-text">
+            <span class="drawer-item-title" id="drawerSoundText">Âm Thanh Hiệu Ứng: BẬT</span>
+            <span class="drawer-item-desc">Âm thanh click, lật thẻ Chợ Đêm & cảnh báo</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==========================================================================
+       MAIN CONTENT CONTAINER (PURE SHOP INTERFACE)
+       ========================================================================== -->
+  <main class="main-content">
+
+    <!-- Store Status & Countdown Timer Bar -->
+    <div class="status-bar">
+      <div class="status-info">
+        <div class="status-tag">
+          <span class="pulse-dot"></span>
+          <span>[ 01 // CỬA HÀNG HÔM NAY ]</span>
+        </div>
+      </div>
+
+      <div class="countdown-box">
+        <span class="countdown-label">LÀM MỚI SAU:</span>
+        <div class="countdown-timer" id="storeCountdown">-- : -- : --</div>
+        <button class="btn btn-secondary btn-icon-only" id="refreshShopBtn" title="Tải lại cửa hàng" style="padding: 6px 10px;">
+          🔄
+        </button>
+      </div>
+    </div>
+
+    <!-- Daily 4 Skins Section -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">VŨ KHÍ HÀNG NGÀY // DAILY OFFERS</h2>
+        <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">
+          Nhấp vào skin để xem Video Finisher & Đánh giá Tier
+        </span>
+      </div>
+      <div class="store-grid" id="dailyShopGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- Night Market Section (Chợ Đêm) -->
+    <section id="nightMarketSection" style="display: none;">
+      <div class="night-market-container">
+        <div class="section-header" style="margin-bottom: 8px;">
+          <h2 class="section-title" style="color: #c084fc;">
+            [ 02 // CHỢ ĐÊM - NIGHT.MARKET ]
+          </h2>
+          <span style="font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">
+            NHẤP VÀO TỪNG THẺ BÍ ẨN ĐỂ LẬT MỞ ƯU ĐÃI ĐỘC QUYỀN
+          </span>
+        </div>
+        <div class="night-market-grid" id="nightMarketGrid">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Bundle Section -->
+    <section id="bundleSection" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">[ 03 // GÓI NỔI BẬT - FEATURED BUNDLE ]</h2>
+      </div>
+      <div class="bundle-banner">
+        <img class="bundle-bg" id="bundleBanner" src="" alt="Bundle" />
+        <div class="bundle-content">
+          <span class="bundle-badge">BỘ SƯU TẬP ĐẶC BIỆT</span>
+          <h3 class="bundle-name" id="bundleName">Loading...</h3>
+          <div style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: #fff;">
+            <img src="/assets/vp.svg" class="currency-icon" alt="VP">
+            <span id="bundlePrice">0</span> VP
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      VALORANT STORE PROTOCOL 2.2 &bull; Tích hợp Video In-game, Tier List Reddit & Bot Discord.
+    </p>
+    <p style="margin-top: 6px; color: var(--text-muted); font-size: 12px;">
+      Valorant là thương hiệu đã đăng ký của Riot Games, Inc. Xác thực an toàn 100% qua Riot Sign-On (RSO).
+    </p>
+  </footer>
+
+  <!-- ==========================================================================
+       MODALS
+       ========================================================================== -->
+
+  <!-- 1. Skin Inspect & In-Game Video Modal -->
+  <div class="modal-overlay" id="inspectModal">
+    <div class="modal-container" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="inspectWeaponTitle">CHI TIẾT & VIDEO IN-GAME</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Media Container: Real Video or 3D Render -->
+        <div class="inspect-media-container" style="position: relative; background: #080d12; border: 1px solid var(--border-subtle); overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+          <!-- HTML5 Video Player -->
+          <video id="inspectWeaponVideo" autoplay loop muted playsinline controls style="width: 100%; max-height: 280px; display: none; object-fit: contain;"></video>
+          <!-- 3D Image Preview Fallback -->
+          <img id="inspectWeaponImg" src="" alt="Weapon" style="max-width: 90%; max-height: 200px; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(0,0,0,0.8));" />
+        </div>
+
+        <!-- Video vs Image Mode Toggle Bar -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary" id="inspectViewVideoBtn" style="padding: 4px 12px; font-size: 12px;">
+              🎬 Xem Video In-game
+            </button>
+            <button class="btn btn-secondary" id="inspectViewImgBtn" style="padding: 4px 12px; font-size: 12px;">
+              🖼️ Xem Ảnh 3D
+            </button>
+          </div>
+          <div id="videoPlayingStatus" style="font-size: 12px; color: var(--valo-cyan); font-family: var(--font-mono);">
+            Đang phát: Cấp độ cao nhất
+          </div>
+        </div>
+
+        <!-- Reddit & Community Tier Rating Card -->
+        <div id="inspectTierBox" style="background: rgba(255, 215, 0, 0.08); border-left: 4px solid var(--valo-gold); padding: 12px; border: 1px solid rgba(255, 215, 0, 0.2);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="inspectTierRatingBadge" style="background: var(--valo-gold); color: #0f1923; font-family: var(--font-display); font-size: 13px; font-weight: 800; padding: 2px 8px;">TIER S+</span>
+              <strong id="inspectTierVerdict" style="color: #fff; font-size: 13px;">ĐÁNG TIỀN NHẤT</strong>
+            </div>
+            <span id="inspectTierScore" style="font-family: var(--font-mono); color: var(--valo-cyan); font-weight: 700; font-size: 14px;">9.9/10</span>
+          </div>
+          <p id="inspectTierSummary" style="color: var(--text-secondary); font-size: 12px; margin-top: 6px; line-height: 1.5;">
+            Đánh giá từ cộng đồng Reddit r/Valorant & Pro players...
+          </p>
+        </div>
+
+        <!-- Chromas (Click to swap image AND variant video) -->
+        <div>
+          <div class="form-label">Biến Thể Màu Sắc (Chromas) - Bấm để đổi màu & video variant:</div>
+          <div class="chroma-list" id="inspectChromasContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Levels (Click to switch video to Level 1, 2, 3, or 4 Finisher) -->
+        <div>
+          <div class="form-label" style="margin-bottom: 6px;">Cấp Độ & Hoạt Ảnh (Bấm để xem video từng cấp độ):</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;" id="inspectLevelsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 6px;">
+          <button class="btn btn-primary" id="inspectWishlistBtn" style="flex: 1;">
+            ★ Thêm Vào Wishlist
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Community Skin Tier List Modal (NEW!) -->
+  <div class="modal-overlay" id="tierListModal">
+    <div class="modal-container" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--valo-gold);">🏆 BẢNG XẾP HẠNG SKIN VALORANT // TIER LIST</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13px; line-height: 1.5;">
+        <div style="background: rgba(255, 215, 0, 0.08); border-left: 4px solid var(--valo-gold); padding: 12px;">
+          <strong>ĐÁNH GIÁ TỔNG HỢP TỪ REDDIT (r/Valorant) & PRO PLAYERS (TenZ, Tarik, aspas):</strong><br>
+          Xem chi tiết skin nào đáng tiền từng xu và skin nào là cạm bẫy lãng phí VP!
+        </div>
+
+        <!-- Search in tier list -->
+        <div class="form-group">
+          <label class="form-label">Tìm Kiếm Skin Trong Bảng Xếp Hạng:</label>
+          <input type="text" id="tierListSearchInput" class="form-input" placeholder="Nhập tên skin (vd: Kuronami, Reaver, Prime, Ion, Origin, Elderflame...)">
+        </div>
+
+        <!-- Tier List Groups -->
+        <div id="tierListContent" style="display: flex; flex-direction: column; gap: 14px; max-height: 440px; overflow-y: auto;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Discord Bot Control Center Modal -->
+  <div class="modal-overlay" id="discordCenterModal">
+    <div class="modal-container" style="max-width: 780px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #5865F2;">🤖 TRUNG TÂM BOT DISCORD // CONTROL PROTOCOL</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-target="discordTabCommands">1. Các Lệnh Sẵn Có (/shop, /login...)</button>
+          <button class="tab-btn" data-target="discordTabInvite">2. Tạo & Mời Bot Vào Server</button>
+          <button class="tab-btn" data-target="discordTabWebhook">3. Discord Webhook Broadcast</button>
+        </div>
+
+        <div class="discord-tab-content" id="discordTabCommands" style="display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+          <div style="background: rgba(88, 101, 242, 0.1); border-left: 4px solid #5865F2; padding: 12px; line-height: 1.5;">
+            <strong>CÁC LỆNH SLASH COMMANDS & PREFIX ĐÃ SẴN SÀNG:</strong><br>
+            Bấm nút <strong>"Chạy thử lệnh"</strong> bên dưới để xem trước phản hồi Embed chuẩn có kèm link video!
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="padding: 10px; background: var(--valo-dark); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <strong style="color: var(--valo-cyan); font-family: var(--font-mono); font-size: 14px;">/shop</strong> hoặc <code>!shop</code>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Xem ngay 4 vũ khí hôm nay kèm link video in-game & đánh giá Tier.</p>
+              </div>
+              <button class="btn btn-secondary sim-cmd-btn" data-cmd="shop" style="margin-top: 8px; padding: 4px 8px; font-size: 11px;">▶ Chạy Thử Lệnh /shop</button>
+            </div>
+
+            <div style="padding: 10px; background: var(--valo-dark); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <strong style="color: var(--valo-cyan); font-family: var(--font-mono); font-size: 14px;">/tierlist [skin]</strong>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Tra cứu đánh giá Reddit xem skin có đáng mua hay không.</p>
+              </div>
+              <button class="btn btn-secondary sim-cmd-btn" data-cmd="tierlist" style="margin-top: 8px; padding: 4px 8px; font-size: 11px;">▶ Chạy Thử /tierlist</button>
+            </div>
+
+            <div style="padding: 10px; background: var(--valo-dark); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <strong style="color: var(--valo-cyan); font-family: var(--font-mono); font-size: 14px;">/login</strong> hoặc <code>!login</code>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Gửi link đăng nhập Riot an toàn vào tin nhắn riêng (DM/Ephemeral).</p>
+              </div>
+              <button class="btn btn-secondary sim-cmd-btn" data-cmd="login" style="margin-top: 8px; padding: 4px 8px; font-size: 11px;">▶ Chạy Thử Lệnh /login</button>
+            </div>
+
+            <div style="padding: 10px; background: var(--valo-dark); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <strong style="color: var(--valo-cyan); font-family: var(--font-mono); font-size: 14px;">/nightmarket</strong> hoặc <code>!nm</code>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Lật mở 6 thẻ Chợ Đêm với phần trăm giảm giá của tài khoản.</p>
+              </div>
+              <button class="btn btn-secondary sim-cmd-btn" data-cmd="nm" style="margin-top: 8px; padding: 4px 8px; font-size: 11px;">▶ Chạy Thử Lệnh /nightmarket</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 6px;">
+            <label class="form-label" style="color: var(--valo-cyan);">KẾT QUẢ MÔ PHỎNG PHẢN HỒI DISCORD:</label>
+            <textarea id="discordSimulatorOutput" class="form-textarea" rows="6" readonly style="font-family: var(--font-mono); font-size: 12px; background: #2f3136; border-color: #5865F2;"></textarea>
+          </div>
+        </div>
+
+        <div class="discord-tab-content" id="discordTabInvite" style="display: none; flex-direction: column; gap: 14px; font-size: 13px; line-height: 1.6;">
+          <h4 style="color: #fff;">Các bước tạo Bot và mời vào Server Discord (2 phút):</h4>
+          <ol style="padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary);">
+            <li>Truy cập <a href="https://discord.com/developers/applications" target="_blank" style="color: #5865F2; font-weight: 700;">Discord Developer Portal ↗</a> &rarr; Bấm <strong>"New Application"</strong>.</li>
+            <li>Vào mục <strong>"Bot"</strong> ở menu trái &rarr; Bấm <strong>"Reset Token"</strong> để lấy <code>BOT TOKEN</code>.</li>
+            <li>Tại mục <strong>"Privileged Gateway Intents"</strong>, bật công tắc <strong>"MESSAGE CONTENT INTENT"</strong>.</li>
+            <li>Vào mục <strong>"General Information"</strong>, copy <code>APPLICATION ID</code> và dán vào ô bên dưới:</li>
+          </ol>
+
+          <div class="form-group">
+            <label class="form-label">Discord Application ID (Client ID)</label>
+            <input type="text" id="discordClientIdInput" class="form-input" placeholder="vd: 123456789012345678">
+          </div>
+
+          <a id="discordInviteLinkBtn" href="#" target="_blank" class="btn btn-discord" style="padding: 12px; font-size: 14px; text-decoration: none; text-align: center;">
+            <span>🔗 Mở Link Mời Bot Vào Server Discord Ngay ↗</span>
+          </a>
+        </div>
+
+        <div class="discord-tab-content" id="discordTabWebhook" style="display: none; flex-direction: column; gap: 14px; font-size: 13px;">
+          <div class="form-group">
+            <label class="form-label">Discord Webhook URL</label>
+            <input type="text" id="discordWebhookUrl" class="form-input" placeholder="https://discord.com/api/webhooks/...">
+          </div>
+          <button class="btn btn-primary" id="testDiscordBtn" style="background: #5865F2;">
+            <span>🚀 Phát Cửa Hàng Hôm Nay Lên Server Discord Ngay</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Online Web Sharing Modal -->
+  <div class="modal-overlay" id="onlineWebModal">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--valo-cyan);">🌐 TÊN MIỀN ONLINE CHO MỌI NGƯỜI (MỌI WI-FI / 4G)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13px; line-height: 1.6;">
+        <div style="background: rgba(0, 245, 212, 0.12); border-left: 4px solid var(--valo-cyan); padding: 16px; border: 1px solid rgba(0, 245, 212, 0.3);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <strong style="color: #fff; font-size: 15px; letter-spacing: 1px; font-family: var(--font-display);">
+              🔥 TÊN MIỀN ONLINE TOÀN CẦU ĐANG HOẠT ĐỘNG:
+            </strong>
+            <span style="background: var(--valo-cyan); color: #0f1923; font-size: 10px; font-weight: 800; padding: 2px 6px;">MỌI THIẾT BỊ / MỌI WI-FI</span>
+          </div>
+          <p style="color: var(--text-secondary); margin-top: 6px;">
+            Bạn bè ở bất cứ đâu (kể cả dùng 3G, 4G, 5G hay Wi-Fi khác) đều có thể mở link này để xem shop ngay:
+          </p>
+          <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="publicDomainInput" readonly value="https://eos-sake-ready-amino.trycloudflare.com" class="form-input" style="flex: 1; font-family: var(--font-mono); font-size: 13px; color: var(--valo-cyan); background: #0b1219; font-weight: 700;">
+            <button class="btn btn-primary" id="copyPublicDomainBtn" style="padding: 10px 16px;">
+              📋 Sao Chép Link
+            </button>
+            <a id="openPublicDomainLink" href="https://eos-sake-ready-amino.trycloudflare.com" target="_blank" class="btn btn-secondary" style="padding: 10px 14px; text-decoration: none;">
+              Mở Link ↗
+            </a>
+          </div>
+        </div>
+
+        <div style="background: rgba(88, 101, 242, 0.08); border-left: 4px solid #5865F2; padding: 12px; margin-top: 12px; border: 1px solid var(--border-subtle);">
+          <strong style="color: #fff; font-size: 14px;">TRIỂN KHAI LÊN VERCEL / RENDER 24/7 (VĨNH VIỄN & MIỄN PHÍ):</strong>
+          <p style="color: var(--text-secondary); margin-top: 4px;">
+            Nếu bạn muốn có một tên miền riêng vĩnh viễn (như <code>https://ten-shop-cua-ban.vercel.app</code>) chạy suốt 24/7/365 mà không cần giữ máy tính bật, hãy bấm Deploy lên <a href="https://vercel.com" target="_blank" style="color: var(--valo-cyan); font-weight: 700;">Vercel.com ↗</a>. Mã nguồn đã được cấu hình sẵn 100%!
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Share Shop Modal (Xuất Ảnh) -->
+  <div class="modal-overlay" id="shareModal">
+    <div class="modal-container" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📸 CHIA SẺ CỬA HÀNG // SHARE SHOP</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <button class="btn btn-primary" id="downloadImageBtn" style="padding: 12px; font-size: 14px;">
+            🖼️ Tải Ảnh Thẻ Shop (PNG)
+          </button>
+          <button class="btn btn-secondary" id="copyDiscordBtn" style="padding: 12px; font-size: 14px; background: #5865F2; color: #fff; border: none;">
+            📋 Sao Chép Cho Discord
+          </button>
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label">Xem Trước Nội Dung Tin Nhắn Discord:</label>
+          <textarea id="shareDiscordPreview" class="form-textarea" rows="6" readonly style="font-family: var(--font-mono); font-size: 12px;"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Riot Login Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">ĐĂNG NHẬP RIOT // AUTH PROTOCOL</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-target="loginTabOfficial">Link Chính Quy Riot (100% An Toàn)</button>
+          <button class="tab-btn" data-target="loginTabDirect">Đăng Nhập Trực Tiếp (Tự Động)</button>
+          <button class="tab-btn" data-target="loginTabBookmarklet">⚡ Bookmarklet (1-Click)</button>
+        </div>
+
+        <div class="login-tab-content" id="loginTabOfficial" style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="background: rgba(0, 245, 212, 0.08); border-left: 4px solid var(--valo-cyan); padding: 12px 16px; font-size: 13px; line-height: 1.5;">
+            <strong>BẢO MẬT TUYỆT ĐỐI:</strong> Bạn không nhập mật khẩu vào app. Thay vào đó, bạn đăng nhập trực tiếp trên máy chủ chính quy của Riot Games (<code>auth.riotgames.com</code>).
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">BƯỚC 1: MỞ TRANG ĐĂNG NHẬP RIOT CHÍNH QUY</div>
+            <a id="riotOfficialLoginBtn" href="#" target="_blank" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; text-decoration: none;">
+              <span>Mở Trang Đăng Nhập auth.riotgames.com ↗</span>
+            </a>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+            <p><strong>BƯỚC 2:</strong> Sau khi đăng nhập xong, copy link có dạng:</p>
+            <code style="display: block; background: var(--valo-dark); padding: 8px; font-size: 11px; margin-top: 4px; word-break: break-all; color: var(--valo-cyan); border: 1px solid var(--border-subtle);">
+              https://playvalorant.com/opt_in#access_token=eyJ...&id_token=eyJ...
+            </code>
+          </div>
+          <div class="form-group">
+            <label class="form-label">BƯỚC 3: DÁN TOÀN BỘ URL HOẶC ACCESS TOKEN VÀO ĐÂY</label>
+            <textarea id="tokenInput" class="form-textarea" rows="3" placeholder="Dán link playvalorant.com/opt_in#access_token=... hoặc token vào đây"></textarea>
+            <button class="btn btn-primary" id="parseTokenBtn" style="margin-top: 10px; width: 100%;">
+              <span>⚡ Xác Nhận & Xem Cửa Hàng Ngay</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-tab-content" id="loginTabDirect" style="display: none; flex-direction: column; gap: 14px;">
+          <form id="directLoginForm" style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Tên Đăng Nhập Riot</label>
+              <input type="text" id="directUsername" class="form-input" placeholder="Tên đăng nhập Riot của bạn" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mật Khẩu</label>
+              <input type="password" id="directPassword" class="form-input" placeholder="Mật khẩu tài khoản Riot" required>
+            </div>
+            <div class="form-group" id="directOtpGroup" style="display: none;">
+              <label class="form-label" style="color: var(--valo-cyan);">Mã Xác Thực 2FA (Đã gửi về Email)</label>
+              <input type="text" id="directOtp" class="form-input" placeholder="Nhập mã 6 chữ số">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 6px;">
+              <span>Đăng Nhập</span>
+            </button>
+          </form>
+        </div>
+
+        <div class="login-tab-content" id="loginTabBookmarklet" style="display: none; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
+            <p>Kéo nút bên dưới vào thanh Dấu trang (Bookmark Bar) của trình duyệt để lấy token 1-click:</p>
+            <div style="text-align: center; margin: 12px 0;">
+              <a id="bookmarkletLink" href="#" class="btn btn-secondary" style="background: var(--valo-cyan); color: #0f1923; font-weight: 800; cursor: move;" title="Kéo nút này vào Bookmark Bar">
+                ⚡ Lấy Token Valorant
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Wishlist Modal -->
+  <div class="modal-overlay" id="wishlistModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">DANH SÁCH YÊU THÍCH // WISHLIST</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Skins Đang Theo Dõi:</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;" id="currentWishlistItems"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tìm Kiếm Skin Để Thêm Vào Wishlist:</label>
+          <input type="text" id="wishlistSearchInput" class="form-input" placeholder="Nhập tên skin (vd: Kuronami, Reaver, Prime, Ion, Vandal...)">
+          <div id="wishlistSearchResults" style="max-height: 220px; overflow-y: auto; margin-top: 10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="/js/riot-auth.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

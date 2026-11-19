@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: valorant-shop-viewer
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: echo "No build step needed - pure Node.js"
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
+    healthCheckPath: /api/health

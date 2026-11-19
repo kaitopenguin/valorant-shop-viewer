@@ -1,0 +1,21 @@
+{
+  "name": "valorant-shop-viewer",
+  "version": "1.0.0",
+  "description": "Sleek, fast Valorant Daily Store Viewer with Official Riot Authentication and Multi-device Cloud Support",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "valorant",
+    "riot-games",
+    "store",
+    "shop",
+    "valorant-store",
+    "pwa"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
