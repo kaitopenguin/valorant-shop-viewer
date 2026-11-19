@@ -335,25 +335,51 @@ const App = {
       return;
     }
 
+    const grid = document.getElementById('dailyShopGrid');
+    if (grid) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: rgba(0, 245, 212, 0.04); border: 1px solid rgba(0, 245, 212, 0.2);">
+          <div style="font-size: 32px; animation: pulseDot 1s infinite; margin-bottom: 12px;">⚡</div>
+          <div style="font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; color: var(--valo-cyan);">ĐANG TẢI CỬA HÀNG VALORANT CỦA BẠN...</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">Kết nối trực tiếp tới máy chủ Riot Games PVP</div>
+        </div>
+      `;
+    }
+
     this.showToast('Đang tải dữ liệu cửa hàng Valorant...', 'info');
 
     try {
+      const region = session.region || this.state.region || 'ap';
       const res = await fetch(`/api/shop?puuid=${session.user.puuid}`, {
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
           'X-Riot-Entitlements-JWT': session.entitlementsToken,
-          'X-Riot-Region': this.state.region,
+          'X-Riot-Region': region,
         },
       });
 
       if (!res.ok) {
-        if (res.status === 400 || res.status === 401 || res.status === 403) {
-          this.showToast('Phiên đăng nhập Riot đã hết hạn. Vui lòng đăng nhập lại.', 'error');
-          RiotAuth.clearSession();
-          this.openModal('loginModal');
-          return;
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error || ('Lỗi máy chủ Riot (' + res.status + ')');
+
+        if (grid) {
+          grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; background: rgba(255, 70, 85, 0.08); border: 1px solid var(--valo-red);">
+              <div style="font-size: 32px; color: var(--valo-red); margin-bottom: 8px;">✕</div>
+              <div style="font-family: var(--font-display); font-size: 18px; color: #fff;">${errMsg}</div>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                Phiên đăng nhập Riot có thể đã hết hạn hoặc bạn vừa đổi mật khẩu. Vui lòng bấm Đăng Nhập Lại để làm mới.
+              </p>
+              <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button class="btn btn-primary" onclick="App.openModal('loginModal')">Đăng Nhập Lại</button>
+                <button class="btn btn-secondary" onclick="App.startDemoMode()">Xem Demo Shop</button>
+              </div>
+            </div>
+          `;
         }
-        throw new Error('Lỗi khi tải cửa hàng (' + res.status + ')');
+
+        this.showToast(errMsg, 'error');
+        return;
       }
 
       const data = await res.json();
@@ -370,9 +396,18 @@ const App = {
       this.startCountdown(data.shop.remainingSeconds);
 
       this.checkWishlistMatches();
-      this.showToast('Cửa hàng hôm nay đã sẵn sàng!', 'success');
+      this.showToast(`Cửa hàng hôm nay của ${session.user.gameName} đã sẵn sàng!`, 'success');
     } catch (err) {
       console.error(err);
+      if (grid) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; background: rgba(255, 70, 85, 0.08); border: 1px solid var(--valo-red);">
+            <div style="font-size: 28px; color: var(--valo-red); margin-bottom: 6px;">✕</div>
+            <div style="font-size: 15px; color: #fff;">Không thể kết nối đến máy chủ: ${err.message}</div>
+            <button class="btn btn-primary" onclick="App.fetchShop()" style="margin-top: 12px;">Thử Lại</button>
+          </div>
+        `;
+      }
       this.showToast(err.message, 'error');
     }
   },
@@ -560,13 +595,48 @@ const App = {
     // --- Helper: switch video src ---
     const setVideo = (url, label) => {
       if (!vidEl) return;
+      const spinner = document.getElementById('videoLoadingSpinner');
+      const directLink = document.getElementById('videoDirectLink');
+
       if (url) {
-        vidEl.src = url;
+        if (directLink) {
+          directLink.href = url;
+          directLink.style.display = 'inline-flex';
+        }
+        if (spinner) spinner.style.display = 'flex';
+
         vidEl.style.display = 'block';
         imgEl.style.display = 'none';
-        vidEl.play().catch(() => {});
+
+        // Critical: muted must be set via JS property for mobile & desktop autoplay
+        vidEl.muted = true;
+        vidEl.defaultMuted = true;
+        vidEl.src = url;
+        vidEl.load();
+
+        vidEl.oncanplay = () => {
+          if (spinner) spinner.style.display = 'none';
+        };
+        vidEl.onplaying = () => {
+          if (spinner) spinner.style.display = 'none';
+        };
+        vidEl.onerror = () => {
+          if (spinner) spinner.style.display = 'none';
+          if (videoStatus) videoStatus.textContent = '⚠ Không thể phát video trực tiếp — Bấm "Mở Tab Mới ↗" để xem';
+        };
+
+        const playPromise = vidEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            if (spinner) spinner.style.display = 'none';
+            if (videoStatus) videoStatus.textContent = `▶ Bấm nút Play trên video để phát (${label})`;
+          });
+        }
+
         if (videoStatus) videoStatus.textContent = `▶ ${label}`;
       } else {
+        if (spinner) spinner.style.display = 'none';
+        if (directLink) directLink.style.display = 'none';
         vidEl.style.display = 'none';
         imgEl.style.display = 'block';
         if (videoStatus) videoStatus.textContent = '🖼️ Không có video — xem ảnh 3D render';
@@ -1214,6 +1284,21 @@ const App = {
       });
     });
 
+    // Paste from Clipboard Button
+    document.getElementById('pasteFromClipboardBtn')?.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          const input = document.getElementById('tokenInput');
+          if (input) input.value = text.trim();
+          this.playSFX('click');
+          this.showToast('✓ Đã dán nội dung từ Clipboard!', 'success');
+        }
+      } catch (err) {
+        this.showToast('Vui lòng nhấn chuột phải và chọn Dán (Paste) vào ô bên dưới', 'info');
+      }
+    });
+
     // Parse Token Button
     document.getElementById('parseTokenBtn')?.addEventListener('click', async () => {
       this.playSFX('click');
@@ -1227,6 +1312,11 @@ const App = {
         this.showToast('Đang xác thực với máy chủ Riot...', 'info');
         const res = await RiotAuth.submitTokens(tokens, this.state.region);
         this.state.user = res.user;
+        if (res.region) {
+          this.state.region = res.region;
+          const regSelect = document.getElementById('drawerRegionSelect');
+          if (regSelect) regSelect.value = res.region;
+        }
         this.state.isDemo = false;
         this.updateUserUI();
         this.closeModals();

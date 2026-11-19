@@ -202,6 +202,63 @@ function getSkinTierInfo(displayName) {
   // Check if standard select/deluxe skin with no VFX
   return { tier: 'D', verdict: 'LÃNG PHÍ VP (NÊN TRÁNH)', score: '4.0/10', summary: 'Skin đổi màu đơn thuần, không có hiệu ứng bắn, âm thanh hay kết liễu. Tiết kiệm VP cho các skin cao cấp hơn!' };
 }
+// Helper for accurate skin pricing (standard Riot pricing rules)
+function getSkinAccuratePrice(displayName, contentTierUuid) {
+  const name = (displayName || '').toLowerCase();
+  const isMelee = name.includes('melee') || name.includes('knife') || name.includes('blade') || 
+                  name.includes('sword') || name.includes('dagger') || name.includes('axe') || 
+                  name.includes('karambit') || name.includes('kunai') || name.includes('claw') || 
+                  name.includes('katana') || name.includes('harvester') || name.includes('no yaiba') ||
+                  name.includes('scythe') || name.includes('anchor') || name.includes('mace') ||
+                  name.includes('bat') || name.includes('carmine') || name.includes('fan');
+
+  // Specific skin lines with unique pricing
+  if (name.includes('kuronami')) {
+    return isMelee ? 5350 : 2375;
+  }
+  if (name.includes('elderflame') || name.includes('protocol')) {
+    return isMelee ? 4950 : 2475; // Ultra edition
+  }
+  if (name.includes('spectrum')) {
+    return isMelee ? 5350 : 2675; // Exclusive / Zedd
+  }
+  if (name.includes('mystbloom') || name.includes('araxys') || name.includes('prelude to chaos') || 
+      name.includes('singularity') || name.includes('chronovoid') || name.includes('glitchpop') ||
+      name.includes('sentinels of light') || name.includes('overdrive') || name.includes('neo frontier') ||
+      name.includes('imperium') || name.includes('champions')) {
+    return isMelee ? 4350 : 2175; // Exclusive edition
+  }
+  if (name.includes('reaver') || name.includes('prime') || name.includes('ion') || 
+      name.includes('oni') || name.includes('gaia') || name.includes('magepunk') || 
+      name.includes('sovereign') || name.includes('neptune') || name.includes('recon') || 
+      name.includes('xenohunter') || name.includes('cryostasis') || name.includes('valiant hero') ||
+      name.includes('radiant crisis') || name.includes('origin') || name.includes('forsaken')) {
+    return isMelee ? 3550 : 1775; // Premium edition
+  }
+  if (name.includes('sakura') || name.includes('minima') || name.includes('aristocrat') || 
+      name.includes('avalanche') || name.includes('wasteland') || name.includes('silvanus') ||
+      name.includes('nunca olvidados') || name.includes('kohaku') || name.includes('orion') || 
+      name.includes('tigris') || name.includes('luna') || name.includes('altitude') ||
+      name.includes('abyssal') || name.includes('team ace') || name.includes('horizon')) {
+    return isMelee ? 2550 : 1275; // Deluxe edition
+  }
+  if (name.includes('smite') || name.includes('luxe') || name.includes('galleria') || 
+      name.includes('prism ii') || name.includes('convex') || name.includes('reverie') || 
+      name.includes('sensation') || name.includes('rush') || name.includes('infantry') ||
+      name.includes('endeavour')) {
+    return isMelee ? 1750 : 875; // Select edition
+  }
+
+  // Fallback by content tier UUID
+  if (contentTierUuid === '411e4a55-4e59-421e-ad30-001a83419b30') return isMelee ? 4950 : 2475; // Ultra
+  if (contentTierUuid === 'e046854e-406c-437b-acac-452a90424268') return isMelee ? 4350 : 2175; // Exclusive
+  if (contentTierUuid === '0cebb8be-46d7-4b0e-bab4-428837223576') return isMelee ? 3550 : 1775; // Premium
+  if (contentTierUuid === '12683d76-48d7-4583-ac74-be2803dbe81e') return isMelee ? 2550 : 1275; // Deluxe
+  if (contentTierUuid === '0e38b886-40e7-4946-8e41-194311d74996') return isMelee ? 1750 : 875;  // Select
+
+  return isMelee ? 3550 : 1775;
+}
+
 function getDemoShop() {
   const sampleSkinNames = ['Kuronami Vandal', 'Reaver Operator', 'Prime//2.0 Phantom', 'Ion Sheriff'];
   const dailyOffers = [];
@@ -221,7 +278,7 @@ function getDemoShop() {
         uuid: found.uuid,
         displayName: found.displayName,
         displayIcon: found.displayIcon || found.levels?.[0]?.displayIcon,
-        price: TIER_PRICES[found.contentTierUuid] || 2175,
+        price: getSkinAccuratePrice(found.displayName, found.contentTierUuid),
         contentTier: tier,
         chromas: found.chromas || [],
         levels: found.levels || [],
@@ -406,12 +463,15 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       let accessToken = body.accessToken || '';
+      let idToken = body.idToken || '';
       const fullUrl = body.url || '';
 
-      // Extract access_token from URL if provided
+      // Extract access_token & id_token from URL if provided
       if (fullUrl) {
         const match = fullUrl.match(/access_token=([^&]+)/);
         if (match) accessToken = match[1];
+        const idMatch = fullUrl.match(/id_token=([^&]+)/);
+        if (idMatch) idToken = idMatch[1];
       }
 
       if (!accessToken) {
@@ -460,11 +520,35 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      // 3. Auto-detect Player Affinity / Region from PAS
+      let detectedRegion = 'ap';
+      if (idToken) {
+        try {
+          const pasRes = await fetch('https://riot-geo.pas.si.riotgames.com/pas/v1/product/valorant', {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id_token: idToken }),
+          });
+          if (pasRes.ok) {
+            const pasData = await pasRes.json();
+            if (pasData.affinities?.live) {
+              detectedRegion = pasData.affinities.live;
+            }
+          }
+        } catch (pe) {
+          console.warn('PAS affinity check error:', pe.message);
+        }
+      }
+
       return sendJSON(res, 200, {
         success: true,
         accessToken,
         entitlementsToken,
         user: userInfo,
+        region: detectedRegion,
       });
     } catch (err) {
       console.error('Error handling token exchange:', err);
@@ -615,32 +699,49 @@ const server = http.createServer(async (req, res) => {
 
       const clientPlatform = 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9';
 
-      // 1. Fetch Storefront
-      const storeUrl = `https://pd.${region}.a.pvp.net/store/v2/storefront/${puuid}`;
-      const storeRes = await fetch(storeUrl, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'X-Riot-Entitlements-JWT': entitlementsToken,
-          'X-Riot-ClientVersion': cache.clientVersion,
-          'X-Riot-ClientPlatform': clientPlatform,
-        },
-      });
+      // 1. Fetch Storefront (with automatic region shard fallback)
+      const regionsToTry = [region, 'ap', 'na', 'eu', 'kr', 'latam', 'br'].filter((v, i, a) => a.indexOf(v) === i);
+      let storeData = null;
+      let activeRegion = region;
+      let lastErrText = '';
 
-      if (!storeRes.ok) {
-        const errText = await storeRes.text();
-        return sendJSON(res, storeRes.status, {
-          success: false,
-          error: 'Không thể tải cửa hàng từ Riot PVP server. Phiên đăng nhập có thể đã hết hạn.',
-          details: errText,
-        });
+      for (const reg of regionsToTry) {
+        try {
+          const storeUrl = `https://pd.${reg}.a.pvp.net/store/v2/storefront/${puuid}`;
+          const storeRes = await fetch(storeUrl, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'X-Riot-Entitlements-JWT': entitlementsToken,
+              'X-Riot-ClientVersion': cache.clientVersion,
+              'X-Riot-ClientPlatform': clientPlatform,
+            },
+          });
+
+          if (storeRes.ok) {
+            storeData = await storeRes.json();
+            activeRegion = reg;
+            break;
+          } else {
+            lastErrText = await storeRes.text();
+            // If 400/404 try next shard
+          }
+        } catch (re) {
+          lastErrText = re.message;
+        }
       }
 
-      const storeData = await storeRes.json();
+      if (!storeData) {
+        return sendJSON(res, 400, {
+          success: false,
+          error: 'Không thể tải cửa hàng từ máy chủ Riot PVP. Phiên đăng nhập có thể đã hết hạn hoặc khu vực không đúng.',
+          details: lastErrText,
+        });
+      }
 
       // 2. Fetch Wallet (Balances)
       let wallet = { vp: 0, rp: 0, kc: 0 };
       try {
-        const walletRes = await fetch(`https://pd.${region}.a.pvp.net/store/v1/wallet/${puuid}`, {
+        const walletRes = await fetch(`https://pd.${activeRegion}.a.pvp.net/store/v1/wallet/${puuid}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'X-Riot-Entitlements-JWT': entitlementsToken,
@@ -658,12 +759,27 @@ const server = http.createServer(async (req, res) => {
         console.warn('Could not fetch wallet:', we.message);
       }
 
-      // 3. Resolve Daily 4 Skin Offers
+      // 3. Resolve Real In-Game Prices from Riot Storefront response
+      const realPriceMap = new Map();
+      if (storeData.SkinsPanelLayout?.SingleItemStoreOffers) {
+        for (const offer of storeData.SkinsPanelLayout.SingleItemStoreOffers) {
+          const cost = offer.Cost?.['85ad13f7-3d1b-5128-9eb8-14cd290b591a'] || Object.values(offer.Cost || {})[0];
+          if (cost && offer.OfferID) {
+            realPriceMap.set(offer.OfferID.toLowerCase(), cost);
+          }
+        }
+      }
+
+      // 4. Resolve Daily 4 Skin Offers
       const rawOffers = storeData.SkinsPanelLayout?.SingleItemOffers || [];
       const remainingSeconds = storeData.SkinsPanelLayout?.SingleItemOffersRemainingDurationInSeconds || 0;
 
       const dailyOffers = rawOffers.map(uuid => {
         const itemInfo = cache.skinLevelsMap.get(uuid.toLowerCase());
+        const realPrice = realPriceMap.get(uuid.toLowerCase()) || 
+                          (itemInfo ? realPriceMap.get(itemInfo.skin.uuid.toLowerCase()) : null) || 
+                          getSkinAccuratePrice(itemInfo?.skin?.displayName, itemInfo?.skin?.contentTier?.uuid);
+
         if (itemInfo) {
           const bestVideo = itemInfo.skin.levels?.slice().reverse().find(l => l.streamedVideo)?.streamedVideo ||
             itemInfo.skin.chromas?.find(c => c.streamedVideo)?.streamedVideo || null;
@@ -673,7 +789,7 @@ const server = http.createServer(async (req, res) => {
             levelUuid: itemInfo.level?.uuid || uuid,
             displayName: itemInfo.skin.displayName,
             displayIcon: itemInfo.skin.displayIcon || itemInfo.level?.displayIcon,
-            price: itemInfo.skin.basePrice,
+            price: realPrice,
             contentTier: itemInfo.skin.contentTier,
             chromas: itemInfo.skin.chromas,
             levels: itemInfo.skin.levels,
@@ -699,7 +815,7 @@ const server = http.createServer(async (req, res) => {
           const rewardUuid = offer.Offer?.Rewards?.[0]?.ItemID || '';
           const itemInfo = cache.skinLevelsMap.get(rewardUuid.toLowerCase());
           const costMap = offer.Offer?.Cost || {};
-          const originalPrice = Object.values(costMap)[0] || (itemInfo?.skin?.basePrice || 1775);
+          const originalPrice = Object.values(costMap)[0] || getSkinAccuratePrice(itemInfo?.skin?.displayName, itemInfo?.skin?.contentTier?.uuid);
           const discountCostMap = offer.DiscountCosts || {};
           const discountedPrice = Object.values(discountCostMap)[0] || originalPrice;
 

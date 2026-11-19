@@ -128,6 +128,7 @@ const RiotAuth = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         accessToken: tokens.accessToken,
+        idToken: tokens.idToken,
         url: tokens.rawUrl,
       }),
     });
@@ -137,11 +138,13 @@ const RiotAuth = {
       throw new Error(data.error || 'Xác thực Riot thất bại.');
     }
 
+    const actualRegion = data.region || region;
+
     this.saveSession({
       accessToken: data.accessToken,
       entitlementsToken: data.entitlementsToken,
       user: data.user,
-      region,
+      region: actualRegion,
     });
 
     return data;
