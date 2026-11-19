@@ -127,7 +127,17 @@ const App = {
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW reg error:', err));
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(k => {
+            if (k !== 'valoshop-cache-v3') caches.delete(k);
+          });
+        });
+      }
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (const r of regs) r.update();
+      });
+      navigator.serviceWorker.register('/sw.js?v=3').catch(err => console.log('SW reg error:', err));
     }
   },
 
@@ -392,12 +402,9 @@ const App = {
       const ci = offer.tierInfo;
       const ciColors = { 'S+': '#ffd700', 'S': '#c0c0c0', 'A': '#00bcd4', 'B': '#7986cb', 'D': '#607d8b' };
       const ciTierBadgeHtml = ci ? `
-        <div style="position:absolute;bottom:0;left:0;right:0;background:${ciColors[ci.tier] || '#607d8b'}22;
-          border-top:2px solid ${ciColors[ci.tier] || '#607d8b'};padding:4px 8px;
-          display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-family:var(--font-display);font-size:11px;font-weight:800;
-            color:${ciColors[ci.tier] || '#607d8b'};letter-spacing:1px;">TIER ${ci.tier}</span>
-          <span style="font-size:10px;color:var(--text-secondary);">${ci.verdict || ''}</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: ${ciColors[ci.tier] || '#607d8b'}18; border: 1px solid ${ciColors[ci.tier] || '#607d8b'}55; padding: 4px 8px; margin: 6px 0 8px; border-radius: 2px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: ${ciColors[ci.tier] || '#607d8b'}; letter-spacing: 1px;">TIER ${ci.tier}</span>
+          <span style="font-size: 10px; color: var(--text-secondary);">${ci.verdict || ''}</span>
         </div>` : '';
 
       const hasVideo = offer.levels?.some(l => l.streamedVideo);
@@ -424,9 +431,9 @@ const App = {
           ${hasVideo ? '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);border:1px solid var(--valo-cyan);padding:2px 6px;font-size:9px;color:var(--valo-cyan);font-weight:800;letter-spacing:1px;">▶ VIDEO</div>' : ''}
         </div>
 
-        <div class="card-bottom" style="position:relative;">
+        <div class="card-bottom">
+          <div class="skin-name">${offer.displayName}</div>
           ${ciTierBadgeHtml}
-          <div class="skin-name" style="margin-bottom:${ci ? '28px' : '0'}">${offer.displayName}</div>
           <div class="skin-pricing">
             <div class="price-pill">
               <img src="/assets/vp.svg" class="currency-icon" alt="VP">
