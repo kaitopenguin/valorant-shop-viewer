@@ -1,5 +1,5 @@
 // Service Worker - Network First with fallback
-const CACHE_NAME = 'valoshop-cache-v3';
+const CACHE_NAME = 'valoshop-cache-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

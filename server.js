@@ -699,7 +699,7 @@ const server = http.createServer(async (req, res) => {
 
       const clientPlatform = 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9';
 
-      // 1. Fetch Storefront (with automatic region shard fallback)
+      // 1. Fetch Storefront (trying current v3 POST then v2 GET fallback, across shards)
       const regionsToTry = [region, 'ap', 'na', 'eu', 'kr', 'latam', 'br'].filter((v, i, a) => a.indexOf(v) === i);
       let storeData = null;
       let activeRegion = region;
@@ -707,8 +707,35 @@ const server = http.createServer(async (req, res) => {
 
       for (const reg of regionsToTry) {
         try {
-          const storeUrl = `https://pd.${reg}.a.pvp.net/store/v2/storefront/${puuid}`;
-          const storeRes = await fetch(storeUrl, {
+          // A. Try v3 POST (Current Riot Games Storefront standard)
+          const storeUrlV3 = `https://pd.${reg}.a.pvp.net/store/v3/storefront/${puuid}`;
+          const storeResV3 = await fetch(storeUrlV3, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'X-Riot-Entitlements-JWT': entitlementsToken,
+              'X-Riot-ClientVersion': cache.clientVersion,
+              'X-Riot-ClientPlatform': clientPlatform,
+              'Content-Type': 'application/json',
+            },
+            body: '{}',
+          });
+
+          if (storeResV3.ok) {
+            storeData = await storeResV3.json();
+            activeRegion = reg;
+            console.log(`[Storefront] Success via v3 POST on shard: ${reg}`);
+            break;
+          } else {
+            const v3Err = await storeResV3.text();
+            lastErrText = `Shard ${reg} v3 (${storeResV3.status}): ${v3Err}`;
+            console.warn(`[Storefront] v3 on ${reg} returned ${storeResV3.status}:`, v3Err);
+          }
+
+          // B. Fallback to v2 GET (legacy endpoint)
+          const storeUrlV2 = `https://pd.${reg}.a.pvp.net/store/v2/storefront/${puuid}`;
+          const storeResV2 = await fetch(storeUrlV2, {
+            method: 'GET',
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'X-Riot-Entitlements-JWT': entitlementsToken,
@@ -717,16 +744,17 @@ const server = http.createServer(async (req, res) => {
             },
           });
 
-          if (storeRes.ok) {
-            storeData = await storeRes.json();
+          if (storeResV2.ok) {
+            storeData = await storeResV2.json();
             activeRegion = reg;
+            console.log(`[Storefront] Success via v2 GET on shard: ${reg}`);
             break;
           } else {
-            lastErrText = await storeRes.text();
-            // If 400/404 try next shard
+            const v2Err = await storeResV2.text();
+            lastErrText = `Shard ${reg} v2 (${storeResV2.status}): ${v2Err}`;
           }
         } catch (re) {
-          lastErrText = re.message;
+          lastErrText = `Shard ${reg} network error: ${re.message}`;
         }
       }
 

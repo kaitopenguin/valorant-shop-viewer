@@ -130,14 +130,14 @@ const App = {
       if ('caches' in window) {
         caches.keys().then(keys => {
           keys.forEach(k => {
-            if (k !== 'valoshop-cache-v3') caches.delete(k);
+            if (k !== 'valoshop-cache-v4') caches.delete(k);
           });
         });
       }
       navigator.serviceWorker.getRegistrations().then(regs => {
         for (const r of regs) r.update();
       });
-      navigator.serviceWorker.register('/sw.js?v=3').catch(err => console.log('SW reg error:', err));
+      navigator.serviceWorker.register('/sw.js?v=4').catch(err => console.log('SW reg error:', err));
     }
   },
 
@@ -361,6 +361,7 @@ const App = {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         const errMsg = errData.error || ('Lỗi máy chủ Riot (' + res.status + ')');
+        const errDetails = errData.details ? `<div style="font-family: var(--font-mono); font-size: 11px; color: var(--valo-cyan); margin-top: 10px; word-break: break-all; max-width: 600px; margin-left: auto; margin-right: auto; background: rgba(0,0,0,0.5); padding: 8px 12px; border: 1px solid var(--border-subtle); text-align: left;">Mã phản hồi từ Riot: ${errData.details}</div>` : '';
 
         if (grid) {
           grid.innerHTML = `
@@ -370,6 +371,7 @@ const App = {
               <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px; max-width: 500px; margin-left: auto; margin-right: auto;">
                 Phiên đăng nhập Riot có thể đã hết hạn hoặc bạn vừa đổi mật khẩu. Vui lòng bấm Đăng Nhập Lại để làm mới.
               </p>
+              ${errDetails}
               <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
                 <button class="btn btn-primary" onclick="App.openModal('loginModal')">Đăng Nhập Lại</button>
                 <button class="btn btn-secondary" onclick="App.startDemoMode()">Xem Demo Shop</button>
@@ -583,14 +585,16 @@ const App = {
 
     if (!modal) return;
 
-    titleEl.textContent = skin.displayName;
-    imgEl.src = skin.displayIcon || '/assets/icon.svg';
-    priceEl.textContent = (skin.price || 1775).toLocaleString() + ' VP';
+    if (titleEl) titleEl.textContent = skin.displayName;
+    if (imgEl) imgEl.src = skin.displayIcon || '/assets/icon.svg';
+    if (priceEl) priceEl.textContent = (skin.price || 1775).toLocaleString() + ' VP';
 
     const tierName = skin.contentTier?.displayName || 'Vũ khí';
     const tierColor = skin.contentTier?.highlightColor ? `#${skin.contentTier.highlightColor}` : '#ff4655';
-    tierEl.textContent = tierName;
-    tierEl.style.color = tierColor;
+    if (tierEl) {
+      tierEl.textContent = tierName;
+      tierEl.style.color = tierColor;
+    }
 
     // --- Helper: switch video src ---
     const setVideo = (url, label) => {

@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=2.2.1">
+  <link rel="stylesheet" href="/css/style.css?v=2.2.3">
 </head>
 <body>
 
@@ -263,7 +263,14 @@
   <div class="modal-overlay" id="inspectModal">
     <div class="modal-container" style="max-width: 720px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="inspectWeaponTitle">CHI TIẾT & VIDEO IN-GAME</h3>
+        <div>
+          <h3 class="modal-title" id="inspectWeaponTitle">CHI TIẾT & VIDEO IN-GAME</h3>
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+            <span id="inspectWeaponTier" style="font-size: 12px; font-weight: 700; color: var(--valo-red);">Exclusive Edition</span>
+            <span style="color: var(--text-muted); font-size: 12px;">•</span>
+            <span id="inspectWeaponPrice" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--valo-cyan);">2,375 VP</span>
+          </div>
+        </div>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
@@ -623,7 +630,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts with Cache Busting -->
-  <script src="/js/riot-auth.js?v=2.2.2"></script>
-  <script src="/js/app.js?v=2.2.2"></script>
+  <script src="/js/riot-auth.js?v=2.2.3"></script>
+  <script src="/js/app.js?v=2.2.3"></script>
 </body>
 </html>
